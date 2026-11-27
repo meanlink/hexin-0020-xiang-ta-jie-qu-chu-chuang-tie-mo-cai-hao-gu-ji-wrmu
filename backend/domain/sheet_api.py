@@ -9,7 +9,7 @@ from domain.allocation import issue_sheet, void_sheet
 from domain.fit_geometry import solve_fit
 from domain.inventory import get_roll
 from domain.openings import check_revision, get_window
-from domain.receipts import complete_cut
+from domain.receipts import complete_cut, withdrawn_sheets
 from domain.sheet_inputs import CompleteCut, NewEstimate, VoidCut
 from domain.sheet_store import find_sheet, sheet_panels
 from domain.tasks import ESTIMATE_CUT
@@ -32,7 +32,12 @@ def get_sheet(sheet_id: UUID):
         conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
         sheet = find_sheet(conn, sheet_id)
         receipt = conn.execute("SELECT * FROM cut_receipts WHERE sheet_id = %s", (sheet_id,)).fetchone()
-        return {**sheet, "panels": sheet_panels(conn, sheet_id), "receipt": receipt}
+        return {
+            **sheet,
+            "panels": sheet_panels(conn, sheet_id),
+            "receipt": receipt,
+            "withdrawn_sheets": withdrawn_sheets(conn, sheet_id) if receipt else [],
+        }
 
 
 @router.post("/cut-sheets/{sheet_id}/issue", dependencies=[Depends(allow("admin"))])
